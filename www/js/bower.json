@@ -21,6 +21,7 @@
     "ramda": "~0.18.0",
     "velocity": "~1.2.3",
     "mithril": "~0.2.0",
-    "dexie": "~1.2.0"
+    "dexie": "~1.2.0",
+    "Materialize": "materialize#~0.97.1"
   }
 }

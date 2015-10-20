@@ -12,6 +12,7 @@
     _collecting = false,
     _display = true,
     _sensor = false;
+    _train = false;
     _collection_ctn = 0;
     var writeToDb = function(model, vm){
         //vm.db.sensor_data.put(model);
@@ -121,7 +122,7 @@
         };
 
         this.handleWorkerResponse = function(e){
-            app.log(e.data);
+            //app.log(e.data);
             m.startComputation();
             if(e.data.result){
                 alert('Training finished in ' + (e.data.result.time/1000) + 's\nAfter ' + e.data.result.iterations +' iters');
@@ -129,6 +130,7 @@
                 app.LogModel.Log('#Iters: ' + e.data.result.iterations);
                 app.LogModel.Log('Error: ' + e.data.result.error);
                 localStorage.setItem('network', JSON.stringify(e.data.network));
+                self.train_btn_text('Train');
             } else {
                 app.LogModel.Log('Err: '+e.data.log.error.toFixed(6) + ', iters: ' + e.data.log.iterations);
                 app.message('Err: ' + e.data.log.error.toFixed(6));
@@ -229,33 +231,6 @@
             writeToDbIfComplete(self.dbModel, self);
         };
 
-        // this.collect = function(start, interval){
-        //     if(start){
-        //         sensorcollector.start('geomagnet', 'magnetic_field', self.handleMagneticField);
-        //         sensorcollector.start('wifi', null, function(e){});
-        //         self.wifiscanId = setInterval(function(){
-        //             sensorcollector.scan('wifi', null, self.handleWifi);
-        //         }, interval * 2 || app.WIFI_SCAN_INTERVAL);
-        //         self.magTimeout = setInterval(function(){
-        //             self.readMagnet = true;
-        //         }, interval || app.MAG_SCAN_INTERVAL);
-        //         self.locId = navigator.geolocation.watchPosition(self.handleGeolocation);
-        //         if(_export) {
-        //             // if collecting training data, stop after 8 seconds.
-        //             // setTimeout(function(){
-        //             //     self.collect(false);
-        //             //     app.LogModel.Log('Training complete');
-        //             //     self.collect_btn_text('Train Location');
-        //             //     _export = false;
-        //             // }, app.COLLECT_TIME);
-        //         }
-        //         app.message('Collection started');
-        //     } else {
-        //         app.message('Collection stopped');
-        //         self.onDevicePaused();
-        //     }
-        // };
-
         /**
          *  Starts the sensors
          *  @param toggle - determines how often to collect data
@@ -281,28 +256,22 @@
         var a = function(e){alert(e.data);};
 
         this.train_neural_network = function(){
-            var network = localStorage.getItem('network');
-            if(network){
-                machine.train('default', {network: network, action: 'train'}, a);
-            } else
-            self.db.training_data.toArray(function(data){
-                machine.train('default', {local: app.local(), data: data, action: 'train'}, self.handleWorkerResponse);
-            });
+            _train = !_train;
+            if(!_train){
+                machine.train('default', {action: 'abort'});
+                self.train_btn_text('Train');
+            } else {
+                self.train_btn_text('Abort');
+                var network = localStorage.getItem('network');
+                if(network){
+                    machine.train('default', {network: network, action: 'train'}, a);
+                    self.train_btn_text('Train');
+                } else
+                self.db.training_data.toArray(function(data){
+                    machine.train('default', {local: app.local(), data: data, action: 'train'}, self.handleWorkerResponse);
+                });
+            }
         };
-
-        // this.predict = function(){
-        //     _predict = !_predict;
-        //     if(_predict) {
-        //         self.predict_btn_text('Stop');
-        //         app.message('Prediction started');
-        //         // when predicting, use a slower interval
-        //         self.collect(true, app.PREDICT_SCAN_INTERVAL);
-        //     } else {
-        //         self.predict_btn_text('Predict');
-        //         app.message('Prediction stopped');
-        //         self.collect(false);
-        //     }
-        // };
 
         this.predict = function(){
             _predict = !_predict;
