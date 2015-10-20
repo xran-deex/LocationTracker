@@ -52,7 +52,7 @@
         var self = this;
         this.model = new app.Model();
         this.dbModel = new app.DbModel();
-        this.predicted_location = m.prop();
+        this.predicted_location = m.prop([]);
         this.predicted_name = m.prop();
         this.readMagnet = true;
 
@@ -144,28 +144,45 @@
          */
         this.getPredictedName = function(val, callback){
             if(last_five.length < 5){
-                last_five.unshift(val[0]);
+                last_five.unshift(val);
             } else {
                 last_five.pop();
-                last_five.unshift(val[0]);
+                last_five.unshift(val);
             }
+            var three = last_five.filter(function(v){
+                return v[2] > 0.9;
+            });
+            var two = last_five.filter(function(v){
+                return v[1] > 0.9;
+            });
             var one = last_five.filter(function(v){
-                return v > 0.99;
+                return v[0] > 0.9;
             });
-            var zero = last_five.filter(function(v){
-                return v < 0.01;
+            self.db.trained_locations.toArray().then(function(locations){
+                var count = locations.length;
+                var diff = locations[0]._id;
+                if(three.length >= 3){
+                    //navigator.vibrate(200);
+                    callback(locations[2].name);
+                    // self.db.trained_locations.where('_id').equals(locations[2]-diff).first(function(trained_location){
+                    //     callback(trained_location.name);
+                    // });
+                }
+                if(two.length >= 3){
+                    //navigator.vibrate(200);
+                    callback(locations[1].name);
+                    // self.db.trained_locations.where('_id').equals(2).first(function(trained_location){
+                    //     callback(trained_location.name);
+                    // });
+                }
+                if(one.length >= 3){
+                    callback(locations[0].name);
+                    // self.db.trained_locations.where('_id').equals(1).first(function(trained_location){
+                    //     callback(trained_location.name);
+                    // });
+                }
             });
-            if(one.length >= 3){
-                //navigator.vibrate(200);
-                self.db.trained_locations.where('_id').equals(2).first(function(trained_location){
-                    callback(trained_location.name);
-                });
-            }
-            if(zero.length >= 3){
-                self.db.trained_locations.where('_id').equals(1).first(function(trained_location){
-                    callback(trained_location.name);
-                });
-            }
+
             callback('');
         };
 
@@ -268,7 +285,7 @@
             if(network){
                 machine.train('default', {network: network, action: 'train'}, a);
             } else
-            self.db.training_data.where('training_id').anyOf(1,2).toArray(function(data){
+            self.db.training_data.toArray(function(data){
                 machine.train('default', {local: app.local(), data: data, action: 'train'}, self.handleWorkerResponse);
             });
         };
@@ -310,9 +327,7 @@
                     self.readMagnet = true;
                 }, 1000);
                 self.locId = navigator.geolocation.watchPosition(self.handleGeolocation);
-                //self.sensor_btn_text('Stop sensor');
             } else {
-                //self.sensor_btn_text('Start sensor');
                 self.onDevicePaused();
             }
         };
@@ -357,7 +372,9 @@
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.train_neural_network}, ctrl.vm.train_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.predict}, ctrl.vm.predict_btn_text()),
             m('h1', 'Prediction: '),
-            m('h1', ctrl.vm.predicted_location()),
+            m('div', ctrl.vm.predicted_location().map(function(i){
+                return m('h1', i.toFixed(6));
+            })),
             (function(){
                 if(app.debug()){
                     return [
