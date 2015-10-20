@@ -9,6 +9,9 @@
         this.clearLog = function(){
             app.LogModel.logs.length = 0;
         };
+        this.clearLocalStorage = function(){
+            localStorage.clear();
+        };
         this.toggle = function(){
             app.local(!app.local());
         };
@@ -19,6 +22,7 @@
         return [
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.delete_db}, 'Delete DB'),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLog}, 'Clear Log'),
+            m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLocalStorage}, 'Clear Storage'),
             m('p', [
                 m('input#local[type=checkbox]', {onchange: ctrl.toggle, checked: app.local()}),
                 m('label', {for: 'local'}, 'Local Training')
