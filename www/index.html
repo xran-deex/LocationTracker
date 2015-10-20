@@ -19,19 +19,32 @@
 -->
 <html>
     <head>
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: http://valis.strangled.net/locationtracker ws://valis.strangled.net/locationtrackersocket 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *">
         <meta name="format-detection" content="telephone=no">
         <meta name="msapplication-tap-highlight" content="no">
         <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
+        <link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+        <link rel="stylesheet" href="js/bower_components/Materialize/bin/materialize.css">
         <link rel="stylesheet" type="text/css" href="css/index.css">
         <title>Location Tracker</title>
     </head>
     <body>
+        <div id="nav"></div>
         <div class="app" id='app'></div>
-
         <script type="text/javascript" src="cordova.js"></script>
-        <script type="text/javascript" src="js/lib/node_modules/dexie/dist/latest/Dexie.js"></script>
-        <script type="text/javascript" src="js/lib/node_modules/mithril/mithril.js"></script>
+        <script src="js/lib/ramda.min.js" charset="utf-8"></script>
+        <script type="text/javascript" src="js/bower_components/dexie/dist/latest/Dexie.min.js"></script>
+        <script type="text/javascript" src="js/bower_components//mithril/mithril.min.js"></script>
+        <!-- <script type="text/javascript" src="js/bower_components/jquery/dist/jquery.min.js"></script> -->
+        <!-- <script type="text/javascript" src="js/bower_components/Materialize/bin/materialize.js"></script> -->
+        <script type="text/javascript" src="js/bower_components/velocity/velocity.min.js"></script>
+        <script type="text/javascript" src="js/utils.js"></script>
+        <script type="text/javascript" src="js/models/DataModel.js"></script>
+        <script type="text/javascript" src="js/models/DbModel.js"></script>
+        <script type="text/javascript" src="js/components/nav.js"></script>
+        <script type="text/javascript" src="js/components/page1.js"></script>
+        <script type="text/javascript" src="js/components/page2.js"></script>
+        <script type="text/javascript" src="js/WifiProcessor.js"></script>
         <script type="text/javascript" src="js/index.js"></script>
     </body>
 </html>

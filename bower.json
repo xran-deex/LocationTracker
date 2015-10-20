@@ -1,0 +1,26 @@
+{
+  "name": "locationtracker",
+  "version": "0.0.1",
+  "homepage": "https://github.com/xran-deex/LocationTracker",
+  "authors": [
+    "Randy Valis <twilightofthedevs@gmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "ramda": "~0.18.0",
+    "velocity": "~1.2.3",
+    "mithril": "~0.2.0",
+    "dexie": "~1.2.0"
+  }
+}
