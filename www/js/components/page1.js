@@ -85,7 +85,12 @@
         this.onDeviceReady = function() {
             console.log('Device Ready');
             document.addEventListener('backButton', function(){
-                navigator.app.exitApp();
+                if(window.location.hash === '#/'){
+                    navigator.app.exitApp();
+                }
+                else {
+                    history.back();
+                }
             }, false);
 
             cordova.plugins.backgroundMode.setDefaults({ text:'Doing heavy tasks.'});
