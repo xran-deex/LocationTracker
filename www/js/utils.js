@@ -1,4 +1,7 @@
 (function(app){
+
+    app.APIKEY = '98e3de68-af67-4007-8a34-26fc9a445679';
+
     // basic log function
     app.log = function(val){
         console.log(val);
@@ -8,6 +11,7 @@
     app.LogModel = {
         logs: [],
         Log: function(val){
+            if(app.LogModel.logs.length > 100) app.LogModel.logs.length = 0;
             var d = new Date();
             app.LogModel.logs.unshift(d.toTimeString().substring(0,8) + ': ' + val);
         }

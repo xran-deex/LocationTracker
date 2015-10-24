@@ -15,7 +15,6 @@
     _train = false;
     _collection_ctn = 0;
     var writeToDb = function(model, vm){
-        //vm.db.sensor_data.put(model);
         lt.WifiProcessor.insert_ssid(model.wifi, vm.db);
         if(_predict){
             lt.ML.constructInputData(model, vm.db, function(data){
@@ -45,7 +44,6 @@
      *  @fn dataComplete - consider the data model complete if it has a lat, lng, wifi, and a non null mag array
      */
     var dataComplete = function(obj){
-        //return R.isEmpty(R.filter(R.isNil, R.values(obj)));
         return obj.lat && obj.lng && obj.magnetic_field !== null && obj.wifi;
     };
 
@@ -93,17 +91,7 @@
                 }
             }, false);
 
-            cordova.plugins.backgroundMode.setDefaults({ text:'Doing heavy tasks.'});
-            cordova.plugins.backgroundMode.enable();
-
-            // Called when background mode has been activated
-            cordova.plugins.backgroundMode.onactivate = function () {
-                setTimeout(function () {
-                    cordova.plugins.backgroundMode.configure({
-                        text:'Running in background for more than 5s now.'
-                    });
-                }, 5000);
-            };
+            cordova.plugins.backgroundMode.setDefaults({ text:'Training Network'});
 
             // grab our database reference
             self.setupDB();
@@ -156,43 +144,41 @@
                 last_five.pop();
                 last_five.unshift(val);
             }
-            var three = last_five.filter(function(v){
-                return v[2] > 0.9;
-            });
-            var two = last_five.filter(function(v){
-                return v[1] > 0.9;
-            });
-            var one = last_five.filter(function(v){
-                return v[0] > 0.9;
-            });
-            self.db.trained_locations.toArray().then(function(locations){
-                var count = locations.length;
-                var diff = locations[0]._id;
-                if(three.length >= 3){
-                    //navigator.vibrate(200);
-                    callback(locations[2].name);
-                    // self.db.trained_locations.where('_id').equals(locations[2]-diff).first(function(trained_location){
-                    //     callback(trained_location.name);
-                    // });
-                }
-                if(two.length >= 3){
-                    //navigator.vibrate(200);
-                    callback(locations[1].name);
-                    // self.db.trained_locations.where('_id').equals(2).first(function(trained_location){
-                    //     callback(trained_location.name);
-                    // });
-                }
-                if(one.length >= 3){
-                    callback(locations[0].name);
-                    // self.db.trained_locations.where('_id').equals(1).first(function(trained_location){
-                    //     callback(trained_location.name);
-                    // });
-                }
+            var map = {};
+            val.forEach(function(item, index){
+                map[index] = last_five.filter(function(v){
+                    return v[index] > 0.9;
+                });
             });
 
-            callback('');
+            if(app.loadedFromServer){
+                outer2: {
+                    for(var e in map){
+                        if(map[e].length >= 3){
+                            callback(app.locations[e].name);
+                            break outer2;
+                        } else {
+                            callback('');
+                        }
+                    }
+                }
+            } else {
+                self.db.trained_locations.toArray().then(function(locations){
+                    var count = locations.length;
+                    var diff = locations[0]._id;
+                    outer: {
+                        for(var e in map){
+                            if(map[e].length >= 3){
+                                callback(locations[e].name);
+                                break outer;
+                            } else {
+                                callback('');
+                            }
+                        }
+                    }
+                });
+            }
         };
-
 
         this.handlePredictionResponse = function(e){
             m.startComputation();
@@ -255,6 +241,7 @@
             self.magTimeout = setInterval(function(){
                 self.readMagnet = true;
             }, timeoutAmt);
+
         };
 
         // simple alert method
@@ -263,13 +250,16 @@
         this.train_neural_network = function(){
             _train = !_train;
             if(!_train){
-                machine.train('default', {action: 'abort'});
+                machine.train('default', {local: app.local(), action: 'abort'});
                 self.train_btn_text('Train');
+                cordova.plugins.backgroundMode.disable();
             } else {
+                cordova.plugins.backgroundMode.enable();
                 self.train_btn_text('Abort');
                 var network = localStorage.getItem('network');
+                app.loadedFromServer = false;
                 if(network){
-                    machine.train('default', {network: network, action: 'train'}, a);
+                    machine.train('default', {local: app.local(), network: network, action: 'train'}, a);
                     self.train_btn_text('Train');
                 } else
                 self.db.training_data.toArray(function(data){
@@ -281,6 +271,14 @@
         this.predict = function(){
             _predict = !_predict;
             if(_predict) {
+                // try to load a previously saved network...
+                var network = localStorage.getItem('network');
+                app.loadedFromServer = false;
+                if(network){
+                    machine.train('default', {local: app.local(), network: network, action: 'train'}, function(e){
+                        console.log(e.data);
+                    });
+                }
                 self.start_sensor();
                 self.predict_btn_text('Stop');
             } else {
@@ -301,15 +299,34 @@
                     self.readMagnet = true;
                 }, 1000);
                 self.locId = navigator.geolocation.watchPosition(self.handleGeolocation);
+                cordova.plugins.backgroundMode.enable();
             } else {
+                cordova.plugins.backgroundMode.disable();
                 self.onDevicePaused();
             }
         };
 
+        var submitToServer = function(name){
+            self.db.trained_locations.where('name').equals(name).toArray(function(location){
+                var id = location[0]._id;
+                self.db.training_data.where('training_id').equals(id).toArray(function(data){
+                    var request = new Request('http://valis.strangled.net/locationtracker/data', {
+                        method: 'post',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({data:data, name: name, apikey: exports.APIKEY})
+                    });
+                    fetch(request).then(function(res){return res.json();}).then(app.log);
+                });
+            });
+        };
+        var name;
         this.export = function(){
             _export = !_export;
             if(_export) {
-                var name = prompt('Enter a name for this location: ');
+                name = prompt('Enter a name for this location: ');
                 if(name === null) {
                     self.message('Collection aborted');
                     _export = !_export;
@@ -327,6 +344,8 @@
                 self.collect(false);
                 self.start_sensor();
                 app.message('Collected ' + _collection_ctn + ' values');
+                // submit to the server
+                submitToServer(name);
             }
         };
     };
@@ -341,7 +360,6 @@
     var view = function(ctrl){
         return [
             m('h1', ctrl.vm.model.title()),
-            //m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.start_sensor}, ctrl.vm.sensor_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.export}, ctrl.vm.collect_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.train_neural_network}, ctrl.vm.train_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.predict}, ctrl.vm.predict_btn_text()),

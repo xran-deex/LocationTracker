@@ -1,12 +1,22 @@
 (function(exports){
 
-    var ul = null;
+    var ul = null, slide, oldX = 0;
     //view helpers
     var init = function(element, isInitialized, context) {
         if (!isInitialized) {
             ul = document.getElementById('slide-out');
             ul.style.left = '-105%';
-
+            // handle drag open/close
+            slide = document.getElementById('slide');
+            slide.ontouchmove = function(e){
+                var diff = e.touches[0].clientX - oldX;
+                oldX = e.touches[0].clientX;
+                if(diff > 30){
+                    slideIn();
+                } else if (diff < -30){
+                    slideOut();
+                }
+            };
         }
     };
     function addBodyClick(){

@@ -148,3 +148,15 @@ input[type='range'] {
     width: 50%;
     margin: 0 auto;
 }
+
+td .btn {
+    width: initial;
+}
+
+#slide {
+    height: 500px;
+    background-color: transparent;
+    width: 27px;
+    top: 56px;
+    position: absolute;
+}
