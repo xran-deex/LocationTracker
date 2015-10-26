@@ -1,5 +1,6 @@
 (function(app){
 
+    app.APIURL = 'http://valis.strangled.net/locationtracker';
     app.APIKEY = '98e3de68-af67-4007-8a34-26fc9a445679';
 
     // basic log function

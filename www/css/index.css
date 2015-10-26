@@ -127,7 +127,7 @@ button:focus {
 }
 
 .side-nav {
-    top: 56px;
+    top: 0;
 }
 
 nav i {
@@ -159,4 +159,9 @@ td .btn {
     width: 27px;
     top: 56px;
     position: absolute;
+}
+
+#sidenav-overlay {
+    opacity: 0;
+    display: none;
 }

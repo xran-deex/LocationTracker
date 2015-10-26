@@ -271,13 +271,25 @@
         this.predict = function(){
             _predict = !_predict;
             if(_predict) {
-                // try to load a previously saved network...
-                var network = localStorage.getItem('network');
-                app.loadedFromServer = false;
-                if(network){
-                    machine.train('default', {local: app.local(), network: network, action: 'train'}, function(e){
-                        console.log(e.data);
+                var network;
+                if(!app.local()){
+                    app.loadedFromServer = true;
+                    m.request({method:'get', url:'http://valis.strangled.net/locationtracker/default?apikey='+app.APIKEY}).then(function(res){
+                        machine.train('default', {local: app.local(), network: res.network, action: 'train'}, function(e){
+                            console.log(e.data);
+                        });
+                        app.locations = res.locations;
+                        alert(res.name + ' loaded');
                     });
+                } else {
+                    app.loadedFromServer = false;
+                    // try to load a previously saved network...
+                    network = localStorage.getItem('network');
+                    if(network){
+                        machine.train('default', {local: app.local(), network: network, action: 'train'}, function(e){
+                            console.log(e.data);
+                        });
+                    }
                 }
                 self.start_sensor();
                 self.predict_btn_text('Stop');
