@@ -1,51 +1,11 @@
 (function(exports){
 
-    exports.DATA_LENGTH = 29;
-
-    var writeToDbIfComplete = function(model, vm){
-        if(dataComplete(model)){
-            writeToDb(model, vm);
-        }
-    };
     var _export = false,
     _predict = false,
     _collecting = false,
     _display = true,
     _sensor = false;
     _train = false;
-    _collection_ctn = 0;
-    var writeToDb = function(model, vm){
-        lt.WifiProcessor.insert_ssid(model.wifi, vm.db);
-        if(_predict){
-            lt.ML.constructInputData(model, vm.db, function(data){
-                app.log(data);
-                var id = data.shift();
-                vm.dbModel.magnetic_field = null;
-                machine.train('default', {data: data, action: 'predict'}, vm.handlePredictionResponse);
-            });
-        }
-        if(_export){
-            lt.ML.constructInputData(model, vm.db, function(data){
-                app.log(data);
-                var id = data.shift();
-                if(data.length !== exports.DATA_LENGTH) return;
-                vm.db.training_data.put({training_id: id, data: data});
-                app.message('Collected ' +(_collection_ctn++)+' values');
-                vm.dbModel.magnetic_field = null;
-            });
-        }
-        if(!_export) {
-            // create a new model if we are not exporting.
-            vm.dbModel = new app.DbModel();
-        }
-    };
-
-    /**
-     *  @fn dataComplete - consider the data model complete if it has a lat, lng, wifi, and a non null mag array
-     */
-    var dataComplete = function(obj){
-        return obj.lat && obj.lng && obj.magnetic_field !== null && obj.wifi;
-    };
 
     var vm = function(){
         var self = this;
@@ -73,11 +33,6 @@
         };
 
         this.onDevicePaused = function(){
-            sensorcollector.stop('geomagnet', 'magnetic_field', function(){});
-            sensorcollector.stop('wifi', null, function(){});
-            navigator.geolocation.clearWatch(self.locId);
-            clearInterval(self.magTimeout);
-            clearInterval(self.wifiscanId);
         };
 
         this.onDeviceReady = function() {
@@ -92,30 +47,12 @@
             }, false);
 
             cordova.plugins.backgroundMode.setDefaults({ text:'Training Network'});
-
-            // grab our database reference
-            self.setupDB();
+            machine.init('98e3de68-af67-4007-8a34-26fc9a445679');
         };
 
-        this.setupDB = function(){
-            var db = new Dexie('SensorData');
-        	db.version(1)
-        		.stores({
-                    wifi_ssids: '++_id,&name',
-                    training_data: '++_id,training_id',
-                    trained_locations: '++_id,&name'
-        		});
-        	// Open the database
-        	db.open()
-        		.catch(function(error){
-        			alert('Uh oh : ' + error);
-        		});
-            self.db = db;
-            exports.db = self.db;
-        };
+
 
         this.handleWorkerResponse = function(e){
-            //app.log(e.data);
             m.startComputation();
             if(e.data.result){
                 alert('Training finished in ' + (e.data.result.time/1000) + 's\nAfter ' + e.data.result.iterations +' iters');
@@ -131,73 +68,11 @@
             m.endComputation();
         };
 
-        var last_five = [];
-        /**
-         *  Finds the name of the trained location based on the predicted value
-         *  @param val - the predicted value
-         *  @param {function} callback - a callback that will be given the name
-         */
-        this.getPredictedName = function(val, callback){
-            if(last_five.length < 5){
-                last_five.unshift(val);
-            } else {
-                last_five.pop();
-                last_five.unshift(val);
-            }
-            var map = {};
-            val.forEach(function(item, index){
-                map[index] = last_five.filter(function(v){
-                    return v[index] > 0.9;
-                });
-            });
-
-            if(app.loadedFromServer){
-                outer2: {
-                    for(var e in map){
-                        if(map[e].length >= 3){
-                            callback(app.locations[e].name);
-                            break outer2;
-                        } else {
-                            callback('');
-                        }
-                    }
-                }
-            } else {
-                self.db.trained_locations.toArray().then(function(locations){
-                    var count = locations.length;
-                    var diff = locations[0]._id;
-                    outer: {
-                        for(var e in map){
-                            if(map[e].length >= 3){
-                                callback(locations[e].name);
-                                break outer;
-                            } else {
-                                callback('');
-                            }
-                        }
-                    }
-                });
-            }
-        };
-
-        this.handlePredictionResponse = function(e){
+        this.handlePredictionResponse = function(result){
             m.startComputation();
-            self.predicted_location(e.data);
-            self.getPredictedName(e.data, function(name){
-                self.predicted_name(name);
-                m.endComputation();
-            });
-        };
-
-        this.handleMagneticField = function(e){
-            if(!self.readMagnet) return;
-            if(typeof e === 'string') return;
-            self.dbModel.magnetic_field = e;
-            writeToDbIfComplete(self.dbModel, self);
-            m.startComputation();
-            self.model.magnetic_field(self.format(e));
+            self.predicted_location(result.predictionData);
+            self.predicted_name(result.predictedName);
             m.endComputation();
-            self.readMagnet = false;
         };
 
         this.format = function(arr){
@@ -205,96 +80,21 @@
             return arr[0].toFixed(2) + ", " + arr[1].toFixed(2) + ", " + arr[2].toFixed(2);
         };
 
-        this.handleGeolocation = function(loc){
-            self.dbModel.lat = loc.coords.latitude;
-            self.dbModel.lng = loc.coords.longitude;
-            writeToDbIfComplete(self.dbModel, self);
-            m.startComputation();
-            self.model.lat('Latitude: ' + loc.coords.latitude);
-            self.model.lng('Longitude: ' + loc.coords.longitude);
-            m.endComputation();
-        };
-
-        this.handleWifi = function(wifi){
-            if(!wifi) return;
-            console.log(wifi);
-            self.dbModel.wifi = wifi;
-            writeToDbIfComplete(self.dbModel, self);
-        };
-
-        /**
-         *  Starts the sensors
-         *  @param toggle - determines how often to collect data
-         */
-        this.collect = function(toggle){
-            clearInterval(self.magTimeout);
-            clearInterval(self.wifiscanId);
-            var timeoutAmt;
-            if(toggle){
-                timeoutAmt = 100;
-            } else {
-                timeoutAmt = 1000;
-            }
-            self.wifiscanId = setInterval(function(){
-                sensorcollector.scan('wifi', null, self.handleWifi);
-            }, timeoutAmt+400);
-            self.magTimeout = setInterval(function(){
-                self.readMagnet = true;
-            }, timeoutAmt);
-
-        };
-
         // simple alert method
         var a = function(e){alert(e.data);};
 
         this.train_neural_network = function(){
-            _train = !_train;
-            if(!_train){
-                machine.train('default', {local: app.local(), action: 'abort'});
-                self.train_btn_text('Train');
-                cordova.plugins.backgroundMode.disable();
-            } else {
-                cordova.plugins.backgroundMode.enable();
-                self.train_btn_text('Abort');
-                var network = localStorage.getItem('network');
-                app.loadedFromServer = false;
-                if(network){
-                    machine.train('default', {local: app.local(), network: network, action: 'train'}, a);
-                    self.train_btn_text('Train');
-                } else
-                self.db.training_data.toArray(function(data){
-                    machine.train('default', {local: app.local(), data: data, action: 'train'}, self.handleWorkerResponse);
-                });
-            }
+            machine.train();
         };
 
         this.predict = function(){
             _predict = !_predict;
             if(_predict) {
                 var network;
-                if(!app.local()){
-                    app.loadedFromServer = true;
-                    m.request({method:'get', url:'http://valis.strangled.net/locationtracker/default?apikey='+app.APIKEY}).then(function(res){
-                        machine.train('default', {local: app.local(), network: res.network, action: 'train'}, function(e){
-                            console.log(e.data);
-                        });
-                        app.locations = res.locations;
-                        alert(res.name + ' loaded');
-                    });
-                } else {
-                    app.loadedFromServer = false;
-                    // try to load a previously saved network...
-                    network = localStorage.getItem('network');
-                    if(network){
-                        machine.train('default', {local: app.local(), network: network, action: 'train'}, function(e){
-                            console.log(e.data);
-                        });
-                    }
-                }
-                self.start_sensor();
+                machine.predict(self.handlePredictionResponse);
                 self.predict_btn_text('Stop');
             } else {
-                self.start_sensor();
+                machine.stop();
                 self.predict_btn_text('Predict');
             }
         };
@@ -302,38 +102,13 @@
         this.start_sensor = function(){
             _sensor = !_sensor;
             if(_sensor){
-                sensorcollector.start('geomagnet', 'magnetic_field', self.handleMagneticField);
-                sensorcollector.start('wifi', null, function(e){});
-                self.wifiscanId = setInterval(function(){
-                    sensorcollector.scan('wifi', null, self.handleWifi);
-                }, app.freq());
-                self.magTimeout = setInterval(function(){
-                    self.readMagnet = true;
-                }, 1000);
-                self.locId = navigator.geolocation.watchPosition(self.handleGeolocation);
                 cordova.plugins.backgroundMode.enable();
             } else {
                 cordova.plugins.backgroundMode.disable();
-                self.onDevicePaused();
+                machine.stop();
             }
         };
 
-        var submitToServer = function(name){
-            self.db.trained_locations.where('name').equals(name).toArray(function(location){
-                var id = location[0]._id;
-                self.db.training_data.where('training_id').equals(id).toArray(function(data){
-                    var request = new Request('http://valis.strangled.net/locationtracker/data', {
-                        method: 'post',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({data:data, name: name, apikey: exports.APIKEY})
-                    });
-                    fetch(request).then(function(res){return res.json();}).then(app.log);
-                });
-            });
-        };
         var name;
         this.export = function(){
             _export = !_export;
@@ -344,20 +119,16 @@
                     _export = !_export;
                     return;
                 }
-                // remove any existing trained network.
-                localStorage.removeItem('network');
-                self.db.trained_locations.put({name: name});
-                self.start_sensor();
+                machine.collect(name, function(msg){
+                    m.startComputation();
+                    app.message(msg);
+                    m.endComputation();
+                });
                 self.collect_btn_text('Training...');
-                _collection_ctn = 0;
-                self.collect(true);
             } else {
                 self.collect_btn_text('Train Location');
-                self.collect(false);
-                self.start_sensor();
+                machine.stop();
                 app.message('Collected ' + _collection_ctn + ' values');
-                // submit to the server
-                submitToServer(name);
             }
         };
     };

@@ -3,7 +3,8 @@
     var ctrl = function(){
         var self = this;
         this.delete_db = function(){
-            app.db.delete();
+            //app.db.delete();
+            machine.deleteDb();
             app.LogModel.Log('Db deleted');
         };
         this.clearLog = function(){
