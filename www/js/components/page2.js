@@ -4,8 +4,11 @@
         var self = this;
         this.delete_db = function(){
             //app.db.delete();
-            machine.deleteDb();
+            indoor.deleteDb();
             app.LogModel.Log('Db deleted');
+        };
+        this.delete_wifi = function(){
+            indoor.deleteWifi(app.log);
         };
         this.clearLog = function(){
             app.LogModel.logs.length = 0;
@@ -22,6 +25,7 @@
     var view = function(ctrl){
         return [
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.delete_db}, 'Delete DB'),
+            m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.delete_wifi}, 'Reset wifi data'),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLog}, 'Clear Log'),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLocalStorage}, 'Clear Storage'),
             m('p', [

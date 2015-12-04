@@ -10,7 +10,6 @@
     var vm = function(){
         var self = this;
         this.model = new app.Model();
-        this.dbModel = new app.DbModel();
         this.predicted_location = m.prop([]);
         this.predicted_name = m.prop();
         this.readMagnet = true;
@@ -47,7 +46,7 @@
             }, false);
 
             cordova.plugins.backgroundMode.setDefaults({ text:'Training Network'});
-            machine.init('98e3de68-af67-4007-8a34-26fc9a445679');
+            indoor.init('98e3de68-af67-4007-8a34-26fc9a445679');
         };
 
 
@@ -84,17 +83,17 @@
         var a = function(e){alert(e.data);};
 
         this.train_neural_network = function(){
-            machine.train();
+            indoor.train();
         };
 
         this.predict = function(){
             _predict = !_predict;
             if(_predict) {
                 var network;
-                machine.predict(self.handlePredictionResponse);
+                indoor.predict(app.freq(), self.handlePredictionResponse);
                 self.predict_btn_text('Stop');
             } else {
-                machine.stop();
+                indoor.stop();
                 self.predict_btn_text('Predict');
             }
         };
@@ -105,7 +104,7 @@
                 cordova.plugins.backgroundMode.enable();
             } else {
                 cordova.plugins.backgroundMode.disable();
-                machine.stop();
+                indoor.stop();
             }
         };
 
@@ -119,7 +118,7 @@
                     _export = !_export;
                     return;
                 }
-                machine.collect(name, function(msg){
+                indoor.collect(name, function(msg){
                     m.startComputation();
                     app.message(msg);
                     m.endComputation();
@@ -127,7 +126,7 @@
                 self.collect_btn_text('Training...');
             } else {
                 self.collect_btn_text('Train Location');
-                machine.stop();
+                indoor.stop();
                 app.message('Collected ' + _collection_ctn + ' values');
             }
         };
@@ -144,7 +143,7 @@
         return [
             m('h1', ctrl.vm.model.title()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.export}, ctrl.vm.collect_btn_text()),
-            m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.train_neural_network}, ctrl.vm.train_btn_text()),
+            //m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.train_neural_network}, ctrl.vm.train_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.predict}, ctrl.vm.predict_btn_text()),
             m('h1', 'Prediction: '),
             m('div', ctrl.vm.predicted_location().map(function(i){

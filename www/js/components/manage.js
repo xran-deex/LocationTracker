@@ -66,6 +66,7 @@
         self.wait = m.prop(false);
         this.train_btn_text = m.prop('Train');
         self.hasDeleted = m.prop(false);
+        self.isSVM = m.prop(false);
         self.deleteCheck = function(){
             self.hasDeleted(false);
             self.model.data().forEach(function(item){
@@ -80,7 +81,7 @@
                 self.wait(true);
                 self.model.data().forEach(function(item){
                     if(item.selected()){
-                        m.request({method:'delete', url:app.APIURL+'/train?apikey='+app.APIKEY, data:{id: item.id}}).then(function(res){
+                        m.request({method:'delete', url:app.APIURL+'/data?apikey='+app.APIKEY, data:{id: item.id}}).then(function(res){
                             self.model.data(self.model.data().filter(function(item2){
                                 return item !== item2;
                             }));
@@ -117,7 +118,8 @@
                 }
             };
             self.hasDeleted(false);
-            m.request({method:'post', url:app.APIURL+'/train?apikey='+app.APIKEY, data: {ids: ids, name: self.name()}}).then(function(res){
+            var type = self.isSVM() ? 'svm' : 'nn';
+            m.request({method:'post', url:app.APIURL+'/train?apikey='+app.APIKEY, data: {ids: ids, type: type, name: self.name()}}).then(function(res){
                 console.log(res);
                 self.showNameForm(false);
                 //Materialize.toast('Training now...', 2000);
@@ -193,6 +195,10 @@
                     m('input[type=text]#name', {onchange: m.withAttr('value', ctrl.vm.name), placeholder: 'Name', class: 'validate', name:'name'}, ctrl.vm.name())
                 ]),
                 m('div.row', [
+                    m('div', [
+                        m('input[type=checkbox]', {id: 'svm', onchange: m.withAttr('checked', ctrl.vm.isSVM), checkout: ctrl.vm.isSVM()}),
+                        m('label', {for: 'svm'}, 'SVM')
+                    ]),
                     m('div', {class: 'col s8 offset-s4'}, [
                         m('button.btn.waves-effect.waves-light', {onclick: ctrl.vm.submit}, 'Submit')
                     ])
