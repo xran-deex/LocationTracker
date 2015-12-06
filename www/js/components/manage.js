@@ -107,12 +107,12 @@
         // monitor progress messages from the server
         self.ws.onmessage = function(event){
             var data = JSON.parse(event.data);
-            if(data.log && data.log > 0.005){
+            if(data.log && data.log.error > 0.005){
                 m.startComputation();
                 self.log('Error: ' + data.log.error.toFixed(4));
                 m.endComputation();
             }
-            if(data.log <= 0.005) {
+            if(!data.log) {
                 m.startComputation();
                 self.log(null);
                 m.endComputation();

@@ -51,12 +51,15 @@
             if(!apikey){
                 self.checkApiKey();
             } else {
+                app.APIKEY = apikey;
                 indoor.init(apikey);
             }
         };
 
         /**
-         *
+         *  Checks that the provided apikey exists on the server.
+         *  Reprompts the user if invalid.
+         *  Saves in local storage if valid and Initializes the plugin.
          */
         this.checkApiKey = function(){
             var apikey = prompt('Enter your API key');
@@ -67,6 +70,7 @@
                 } else {
                     apikey = res[0].apikey;
                     localStorage.setItem('APIKEY', apikey);
+                    app.APIKEY = apikey;
                     indoor.init(apikey);
                 }
             });
@@ -146,20 +150,14 @@
             m('div', ctrl.vm.predicted_location().map(function(i){
                 return m('h1', i.toFixed(6));
             })),
+            m('h1', ctrl.vm.predicted_name()),
             (function(){
                 if(app.debug()){
                     return [
-                        m('h6', 'Sensor Values: '),
-                        m('h6', [
-                            m('span#cal', ctrl.vm.model.magnetic_field())
-                        ]),
-                        m('div', ctrl.vm.model.lat()),
-                        m('div', ctrl.vm.model.lng()),
                         m('h6.message', app.message())
                     ];
                 }
             })(),
-            m('h1', ctrl.vm.predicted_name()),
         ];
     };
 

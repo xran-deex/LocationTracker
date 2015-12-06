@@ -1,7 +1,7 @@
 (function(app){
 
     app.APIURL = 'http://valis.strangled.net/locationtracker';
-    app.APIKEY = '98e3de68-af67-4007-8a34-26fc9a445679';
+    //app.APIKEY = '98e3de68-af67-4007-8a34-26fc9a445679';
 
     // basic log function
     app.log = function(val){
@@ -24,7 +24,7 @@
     app.WIFI_SCAN_INTERVAL = 500;
     app.MAG_SCAN_INTERVAL = 100;
 
-    app.debug = m.prop(false);
+    app.debug = m.prop(true);
     app.message = m.prop('');
 
     /**
