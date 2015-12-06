@@ -16,6 +16,9 @@
         this.clearLocalStorage = function(){
             localStorage.clear();
         };
+        this.clearKey = function(){
+            localStorage.removeItem('APIKEY');
+        };
         this.toggle = function(){
             app.local(!app.local());
         };
@@ -28,6 +31,7 @@
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.delete_wifi}, 'Reset wifi data'),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLog}, 'Clear Log'),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearLocalStorage}, 'Clear Storage'),
+            m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.clearKey}, 'Clear API key'),
             m('p', [
                 m('input#local[type=checkbox]', {onchange: ctrl.toggle, checked: app.local()}),
                 m('label', {for: 'local'}, 'Local Training')

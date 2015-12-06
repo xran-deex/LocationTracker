@@ -24,7 +24,7 @@
     app.WIFI_SCAN_INTERVAL = 500;
     app.MAG_SCAN_INTERVAL = 100;
 
-    app.debug = m.prop(true);
+    app.debug = m.prop(false);
     app.message = m.prop('');
 
     /**

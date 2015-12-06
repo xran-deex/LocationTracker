@@ -13,13 +13,12 @@
                     parent.data(parent.data().filter(function(item){
                         return item !== self;
                     }));
-                    //Materialize.toast(self.name + ' deleted', 3000);
                 });
             }
         };
     };
 
-    var Model = function(parent){
+    var Model = function(){
         var self = this;
         this.data = m.prop([]);
         this.fetchData = function(cb){
@@ -31,16 +30,7 @@
             self.fetchData(function(data){
                 self.data(data.map(function(item){
                     item = new ItemModel(self, item);
-                    item.selected = (function(val){
-                        var _val = val;
-                        return function(){
-                            if(arguments.length > 0){
-                                _val = arguments[0];
-                                parent.deleteCheck();
-                            }
-                            return _val;
-                        };
-                    })(false);
+                    item.selected = m.prop(false);
                     return item;
                 }));
                 self.data().sort(function(i, j){
@@ -58,23 +48,20 @@
     var VM = function(){
         var self = this;
         self.ws = null;
-        self.model = app.model = new Model(self);
+        self.model = app.model = new Model();
         app.model.update();
         this.showNameForm = m.prop(false);
         this.name = m.prop();
         self.log = m.prop('');
         self.wait = m.prop(false);
         this.train_btn_text = m.prop('Train');
-        self.hasDeleted = m.prop(false);
-        self.isSVM = m.prop(false);
-        self.deleteCheck = function(){
-            self.hasDeleted(false);
-            self.model.data().forEach(function(item){
-                if(item.selected()){
-                    self.hasDeleted(true);
-                }
-            });
+        // returns true if there are selected items
+        self.hasSelected = function(){
+            return self.model.data().filter(function(item){
+                return item.selected();
+            }).length > 0;
         };
+
         self.delete = function(){
             let yes = confirm('Are you sure?');
             if(yes){
@@ -85,7 +72,6 @@
                             self.model.data(self.model.data().filter(function(item2){
                                 return item !== item2;
                             }));
-                            self.hasDeleted(false);
                             self.wait(false);
                         });
                     }
@@ -106,28 +92,36 @@
             }).map(function(item){
                 return item.id;
             });
-            self.ws = new WebSocket('ws://valis.strangled.net/locationtrackersocket');
 
-            // monitor progress messages from the server
-            self.ws.onmessage = function(event){
-                var data = JSON.parse(event.data);
-                if(data.log){
-                    m.startComputation();
-                    self.log('Error: ' + data.log.error.toFixed(4));
-                    m.endComputation();
-                }
-            };
-            self.hasDeleted(false);
-            var type = self.isSVM() ? 'svm' : 'nn';
-            m.request({method:'post', url:app.APIURL+'/train?apikey='+app.APIKEY, data: {ids: ids, type: type, name: self.name()}}).then(function(res){
+            m.request({method:'post', url:app.APIURL+'/train?apikey='+app.APIKEY, data: {ids: ids, name: self.name()}}).then(function(res){
                 console.log(res);
                 self.showNameForm(false);
-                //Materialize.toast('Training now...', 2000);
                 self.train_btn_text('Train');
                 self.model.data().forEach(function(item){item.selected(false);});
             }, function(err){
                 console.log(err);
             });
+        };
+        self.ws = new WebSocket('ws://valis.strangled.net/locationtrackersocket');
+
+        // monitor progress messages from the server
+        self.ws.onmessage = function(event){
+            var data = JSON.parse(event.data);
+            if(data.log && data.log > 0.005){
+                m.startComputation();
+                self.log('Error: ' + data.log.error.toFixed(4));
+                m.endComputation();
+            }
+            if(data.log <= 0.005) {
+                m.startComputation();
+                self.log(null);
+                m.endComputation();
+            }
+        };
+
+        self.cancel = function(){
+            self.log('');
+            self.ws.send('abort');
         };
     };
 
@@ -137,8 +131,9 @@
     };
 
     var deleteView = function(ctrl){
-        if(ctrl.vm.hasDeleted()){
-            return m('div.btnspinner', [
+        if(ctrl.vm.hasSelected()){
+            return m('div.row.flex-container', [
+                m('div.btnspinner', [
                 (function(){
                     if(!ctrl.vm.wait())
                     return [
@@ -162,7 +157,8 @@
                         ])
                     ]);
                 })()
-                ]);
+                ])
+            ]);
         }
     };
 
@@ -178,7 +174,7 @@
                 ctrl.vm.model.data().map(function(item, i){
                     return m('tr', [
                         m('td', [
-                            m('input[type=checkbox]', {id: 'item'+i, onclick: m.withAttr("checked", item.selected), checked: item.selected(), onchange: ctrl.vm.deleteCheck}),
+                            m('input[type=checkbox]', {id: 'item'+i, onclick: m.withAttr("checked", item.selected), checked: item.selected()}),
                             m('label', {for: 'item'+i})
                         ]),
                         m('td', item.name),
@@ -194,14 +190,20 @@
                 m('div.input-field', [
                     m('input[type=text]#name', {onchange: m.withAttr('value', ctrl.vm.name), placeholder: 'Name', class: 'validate', name:'name'}, ctrl.vm.name())
                 ]),
-                m('div.row', [
-                    m('div', [
-                        m('input[type=checkbox]', {id: 'svm', onchange: m.withAttr('checked', ctrl.vm.isSVM), checkout: ctrl.vm.isSVM()}),
-                        m('label', {for: 'svm'}, 'SVM')
-                    ]),
-                    m('div', {class: 'col s8 offset-s4'}, [
+                m('div.row.flex-container', [
+                    m('div', {class: 'col'}, [
                         m('button.btn.waves-effect.waves-light', {onclick: ctrl.vm.submit}, 'Submit')
                     ])
+                ])
+            ]);
+        }
+    };
+
+    var cancelTraining = function(ctrl){
+        if(ctrl.vm.log()){
+            return m('div.row.flex-container', [
+                m('div', {class: 'col'}, [
+                    m('button.btn.waves-effect.waves-light', {onclick: ctrl.vm.cancel}, 'Cancel')
                 ])
             ]);
         }
@@ -213,13 +215,12 @@
             return [
                 m('div.container', [
                     m('h4', 'My Locations'),
+                    deleteView(ctrl),
+                    m('h6', ctrl.vm.log()),
+                    cancelTraining(ctrl),
+                    nameFormView(ctrl),
                     tableview(ctrl),
-                    m('div.row', [
-                        deleteView(ctrl)
-                    ])
-                ]),
-                m('h6', ctrl.vm.log()),
-                nameFormView(ctrl)
+                ])
             ];
         }
     };

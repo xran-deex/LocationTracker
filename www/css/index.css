@@ -165,3 +165,33 @@ td .btn {
     opacity: 0;
     display: none;
 }
+
+.nameInput {
+    margin-top: 35px;
+}
+
+.table_btn {
+    width: 90px;
+    padding: 0 8px;
+    font-size: 0.8em;
+}
+
+.btnspinner {
+    display: flex;
+    justify-content: center;
+    flex-direction: column;
+}
+
+.btnspinner .btn {
+    flex: 0 1 auto;
+    margin: 10px;
+}
+
+nav {
+    background-color: #41446F;
+}
+
+.flex-container {
+    display: flex;
+    justify-content: center;
+}

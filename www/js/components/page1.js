@@ -46,25 +46,30 @@
             }, false);
 
             cordova.plugins.backgroundMode.setDefaults({ text:'Training Network'});
-            indoor.init('98e3de68-af67-4007-8a34-26fc9a445679');
+            // check for an api key
+            var apikey = localStorage.getItem('APIKEY');
+            if(!apikey){
+                self.checkApiKey();
+            } else {
+                indoor.init(apikey);
+            }
         };
 
-
-
-        this.handleWorkerResponse = function(e){
-            m.startComputation();
-            if(e.data.result){
-                alert('Training finished in ' + (e.data.result.time/1000) + 's\nAfter ' + e.data.result.iterations +' iters');
-                app.LogModel.Log('Training finished in ' + (e.data.result.time/1000) + 's');
-                app.LogModel.Log('#Iters: ' + e.data.result.iterations);
-                app.LogModel.Log('Error: ' + e.data.result.error);
-                localStorage.setItem('network', JSON.stringify(e.data.network));
-                self.train_btn_text('Train');
-            } else {
-                app.LogModel.Log('Err: '+e.data.log.error.toFixed(6) + ', iters: ' + e.data.log.iterations);
-                app.message('Err: ' + e.data.log.error.toFixed(6));
-            }
-            m.endComputation();
+        /**
+         *
+         */
+        this.checkApiKey = function(){
+            var apikey = prompt('Enter your API key');
+            m.request({method:'get', url:app.APIURL+'/check_api_key?apikey='+apikey}).then(function(res){
+                if(res.length !== 1){
+                    alert('Invalid API key. Try again.');
+                    self.checkApiKey();
+                } else {
+                    apikey = res[0].apikey;
+                    localStorage.setItem('APIKEY', apikey);
+                    indoor.init(apikey);
+                }
+            });
         };
 
         this.handlePredictionResponse = function(result){
@@ -77,13 +82,6 @@
         this.format = function(arr){
             if(arr instanceof Array)
             return arr[0].toFixed(2) + ", " + arr[1].toFixed(2) + ", " + arr[2].toFixed(2);
-        };
-
-        // simple alert method
-        var a = function(e){alert(e.data);};
-
-        this.train_neural_network = function(){
-            indoor.train();
         };
 
         this.predict = function(){
@@ -143,7 +141,6 @@
         return [
             m('h1', ctrl.vm.model.title()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.export}, ctrl.vm.collect_btn_text()),
-            //m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.train_neural_network}, ctrl.vm.train_btn_text()),
             m('a', {class: 'waves-effect waves-light btn', onclick: ctrl.vm.predict}, ctrl.vm.predict_btn_text()),
             m('h1', 'Prediction: '),
             m('div', ctrl.vm.predicted_location().map(function(i){
